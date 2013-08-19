@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>JS Image Manipulation</title>
+</head>
+<body>
+<img src="images/horse.jpg" id="horseImage">
+<img src="images/tearoom.jpg" id="tearoomImage">
+<div class="panel">
+  <canvas class='rgb-range' width="800px" height="450px"></canvas>
+  <div class="control">
+    Red <input type="range" min="50" max="150" value="100" id="redRange"><br>
+  </div>
+  <div class="control">
+    Green <input type="range" min="50" max="150" value="100" id="greenRange"><br>
+  </div>
+  <div class="control">
+    Blue <input type="range" min="50" max="150" value="100" id="blueRange"><br>
+  </div>
+</div>
+<script>
+// image changing hue/saturation of images
+// grey scaling image - http://en.wikipedia.org/wiki/Grayscale
+// clicking on image to select color to stand out and greyscale rest of image
+// Wrapping our code in a self-executing function to avoid leaking global variables
+(function () {
+
+var canvas,
+    originalImageData,
+    inputs,
+    ctx;
+
+var init = function () {
+  canvas = document.querySelector('canvas.rgb-range');
+  ctx = canvas.getContext("2d");
+  loadImageById("horseImage");
+  setupRgbListeners();
+};
+
+var setupRgbListeners = function () {
+  inputs = ["red", "green", "blue"].map(function (val) {
+    return {
+      sel: val.charAt(0),
+      elem: document.getElementById(val + "Range"),
+      percentChange: 1
+    };
+  });
+  inputs.forEach(function (input) {
+    input.elem.addEventListener("change", function (e) {
+      input.percentChange = parseInt(input.elem.value, 10) / 100;
+      applyFilter(function (rgb) {
+        inputs.forEach(function (i) {
+          rgb[i.sel] = Math.round(rgb[i.sel] * i.percentChange);
+          if (rgb[i.sel] > 255) rgb[i.sel] = 255;
+          if (rgb[i.sel] < 0) rgb[i.sel] = 0;
+        });
+        return rgb;
+      });
+    });
+  });
+};
+
+var loadImageById = function (id) {
+  var img = document.getElementById(id);
+  img.onload = function () {
+    ctx.drawImage(img, 0, 0);
+    originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  };
+};
+
+var applyFilter = function (filterFn) {
+  var imgData = ctx.createImageData(canvas.width, canvas.height);
+  imgData.data.set(originalImageData.data);
+  var rgb;
+  for (var i = 0; i < imgData.data.length; i += 4) {
+    rgb = filterFn({
+      r: imgData.data[i],
+      g: imgData.data[i+1],
+      b: imgData.data[i+2],
+      a: imgData.data[i+3]
+    });
+    imgData.data[i] = rgb.r;
+    imgData.data[i+1] = rgb.g;
+    imgData.data[i+2] = rgb.b;
+    imgData.data[i+3] = rgb.a;
+  }
+  ctx.putImageData(imgData, 0, 0);
+};
+
+init();
+
+})();
+</script>
+</body>
+</html>
