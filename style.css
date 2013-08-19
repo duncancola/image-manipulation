@@ -1,0 +1,11 @@
+.panel, .control {
+  margin: 20px 0;
+}
+
+.panel {
+  background: #DDDDDD;
+}
+
+.control {
+  background: #555555;
+}

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html>
+<head>
+<link rel="stylesheet" href="style.css">
+<title>JS Image Manipulation</title>
+</head>
+<body>
+<img src="images/horse.jpg" id="horseImage">
+<img src="images/tearoom.jpg" id="tearoomImage">
+<div class="panel">
+  <canvas class='colour-select' width='800px' height='450px'></canvas>
+  <div class="control">
+    <button type="button" id="reset">Reset</button>
+    <div width='50px' height='50px' id='selectedColour' style='background-color:#000000'></div>
+</div>
+<script>
+
+var canvas,
+    isColourSet = false,
+    originalImageData,
+    ctx;
+
+var init = function () {
+  canvas = document.querySelector('canvas.colour-select');
+  ctx = canvas.getContext('2d');
+  loadImageById('tearoomImage');
+  setupListeners();
+};
+
+var accuracy = 50;
+var similarColours = function (rgb1, rgb2) {
+  return (
+    Math.abs(rgb1.r - rgb2.r) < accuracy &&
+    Math.abs(rgb1.g - rgb2.g) < accuracy &&
+    Math.abs(rgb1.b - rgb2.b) < accuracy
+  );
+};
+
+var dominantColours = function(col, rgb2) {
+  return (
+    rgb2[col] >= Math.max(rgb2.r, rgb2.g, rgb2.b)
+  );
+};
+
+var getDominantColour = function (rgb) {
+  var max = "r";
+  for (var c in rgb) {
+    if (rgb.hasOwnProperty(c)) {
+      if (rgb[c] > rgb[max]) {
+        max = c;
+      }
+    }
+  }
+  return max;
+};
+
+var setupListeners = function () {
+  document.querySelector('canvas.colour-select').addEventListener('click', function (e) {
+    if (!isColourSet) {
+      isColourSet = true;
+      var x = e.pageX - this.offsetLeft;
+      var y = e.pageY - this.offsetTop;
+      var pixelData = ctx.getImageData(x, y, 1, 1);
+      var matchRgb = {
+        r: pixelData.data[0],
+        g: pixelData.data[1],
+        b: pixelData.data[2]
+      };
+      var dominantCol = getDominantColour(matchRgb);
+      applyFilter(function (rgb) {
+        if (!dominantColours(dominantCol, rgb)) {
+          return grayscaleFilter(rgb);
+        }
+        /*
+        if (!similarColours(matchRgb, rgb)) {
+          return grayscaleFilter(rgb);
+        }
+        */
+        return rgb;
+      });
+    }
+  });
+  document.getElementById('reset').addEventListener('click', function (e) {
+    e.preventDefault();
+    var imgData = ctx.createImageData(canvas.width, canvas.height);
+    imgData.data.set(originalImageData.data);
+    ctx.putImageData(imgData, 0, 0);
+    isColourSet = false;
+  });
+};
+
+// http://www.johndcook.com/blog/2009/08/24/algorithms-convert-color-grayscale/
+var grayscaleFilter = function (rgb) {
+  var i = ((0.21 * rgb.r) + (0.71 * rgb.g) + (0.07 * rgb.b));
+  rgb.r = i;
+  rgb.g = i;
+  rgb.b = i;
+  return rgb;
+};
+
+var applyFilter = function (filterFn) {
+  var imgData = ctx.createImageData(canvas.width, canvas.height);
+  imgData.data.set(originalImageData.data);
+  var rgb;
+  for (var i = 0; i < imgData.data.length; i += 4) {
+    rgb = filterFn({
+      r: imgData.data[i],
+      g: imgData.data[i+1],
+      b: imgData.data[i+2],
+      a: imgData.data[i+3]
+    });
+    imgData.data[i] = rgb.r;
+    imgData.data[i+1] = rgb.g;
+    imgData.data[i+2] = rgb.b;
+    imgData.data[i+3] = rgb.a;
+  }
+  ctx.putImageData(imgData, 0, 0);
+};
+
+var loadImageById = function (id) {
+  var img = document.getElementById(id);
+  img.onload = function () {
+    ctx.drawImage(img, 0, 0);
+    originalImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  };
+};
+
+init();
+
+</script>
+</body>
+</html>
