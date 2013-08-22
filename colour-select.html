@@ -27,12 +27,19 @@ var init = function () {
   setupListeners();
 };
 
-var accuracy = 50;
-var similarColours = function (rgb1, rgb2) {
+var accuracy = 10;
+var similarColours = function (matchRgb, rgb2) {
   return (
     Math.abs(rgb1.r - rgb2.r) < accuracy &&
     Math.abs(rgb1.g - rgb2.g) < accuracy &&
     Math.abs(rgb1.b - rgb2.b) < accuracy
+  );
+};
+
+var similarHue = function (matchHsl, rgb2) {
+  var hsl2 = rgbToHsl(rgb2);
+  return (
+    Math.abs(Math.round(matchHsl.h * 100) - Math.round(hsl2.h * 100)) < accuracy
   );
 };
 
@@ -54,6 +61,33 @@ var getDominantColour = function (rgb) {
   return max;
 };
 
+// thanks to: http://stackoverflow.com/questions/2353211/hsl-to-rgb-color-conversion
+var rgbToHsl = function (rgb) {
+  var r = rgb.r / 255,
+      g = rgb.g / 255,
+      b = rgb.b / 255,
+      max = Math.max(r, g, b),
+      min = Math.min(r, g, b),
+      d,
+      hsl = {
+        l: (max + min) / 2
+      };
+
+  if (max == min) {
+    hsl.h = hsl.s = 0;
+  } else {
+    d = max - min;
+    hsl.s = hsl.l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: hsl.h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: hsl.h = (b - r) / d + 2; break;
+      case b: hsl.h = (r - g) / d + 4; break;
+    }
+    hsl.h /= 6;
+  }
+  return hsl;
+};
+
 var setupListeners = function () {
   document.querySelector('canvas.colour-select').addEventListener('click', function (e) {
     if (!isColourSet) {
@@ -67,10 +101,16 @@ var setupListeners = function () {
         b: pixelData.data[2]
       };
       var dominantCol = getDominantColour(matchRgb);
+      var matchHsl = rgbToHsl(matchRgb);
       applyFilter(function (rgb) {
+        if (!similarHue(matchHsl, rgb)) {
+          return grayscaleFilter(rgb);
+        }
+        /*
         if (!dominantColours(dominantCol, rgb)) {
           return grayscaleFilter(rgb);
         }
+        */
         /*
         if (!similarColours(matchRgb, rgb)) {
           return grayscaleFilter(rgb);
